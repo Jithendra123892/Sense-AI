@@ -7,6 +7,7 @@ export type Intent =
 	| { type: 'refactor'; instruction: string; code: string }
 	| { type: 'explain'; code: string }
 	| { type: 'generate'; description: string }
+	| { type: 'insertCode'; description: string }
 	| { type: 'editFile'; instruction: string; fileContent: string }
 	| { type: 'createFile'; filename: string }
 	| { type: 'deleteFile'; filename: string }
@@ -42,7 +43,7 @@ export function getIntention(message: string, context: AIContext): Intent {
 
 	// Check for intents that require selected text
 	if (context.selectedText) {
-		if (lowerCaseMessage.startsWith('refactor') || lowerCaseMessage.startsWith('edit') || lowerCaseMessage.startsWith('change')) {
+		if (lowerCaseMessage.startsWith('refactor') || lowerCaseMessage.startsWith('edit') || lowerCaseMessage.startsWith('change') || lowerCaseMessage.startsWith('replace') || lowerCaseMessage.startsWith('rewrite')) {
 			return { type: 'refactor', instruction: message, code: context.selectedText };
 		}
 		if (lowerCaseMessage.startsWith('explain')) {
@@ -53,6 +54,13 @@ export function getIntention(message: string, context: AIContext): Intent {
 	// Check for file-level editing
 	if (lowerCaseMessage.includes('this file')) {
 		return { type: 'editFile', instruction: message, fileContent: context.fileContent || '' };
+	}
+
+	// Check for code insertion (no selection)
+	const insertMatch = lowerCaseMessage.match(/^(?:add|insert) (?:a |an |some )?(.*)/);
+	if (insertMatch && !context.selectedText) {
+		// Heuristic: If it's not a file creation, assume it's code insertion.
+		return { type: 'insertCode', description: insertMatch[1] };
 	}
 
 	// Check for generation
@@ -100,23 +108,34 @@ export function getAIResponse(message: string, context: string = ''): string {
 		}
 	}
 
-	// --- Refactoring ---
+	// --- Refactoring (for replacement) ---
 	if (message.startsWith('refactor:')) {
 		const parts = message.substring(9).split('\n---\n');
 		const instruction = parts[0].toLowerCase();
 		const code = parts[1];
 
 		if (instruction.includes('add comment')) {
-			const commentedCode = `// This is a simulated refactoring. Here are some comments:\n${code.split('\n').map(line => `// ${line}`).join('\n')}`;
-			return `Sure, here is the code with added comments:\n\n\`\`\`\n${commentedCode}\n\`\`\``;
+			return `// This is a simulated refactoring. Here are some comments:\n${code.split('\n').map(line => `// ${line}`).join('\n')}`;
 		}
 
 		if (instruction.includes('arrow function')) {
-			const arrowFunc = code.replace(/function\s*([a-zA-Z0-9_]+)\s*\((.*?)\)/, 'const $1 = ($2) =>');
-			return `Here is the function converted to an arrow function:\n\n\`\`\`\n${arrowFunc}\n\`\`\``;
+			return code.replace(/function\s*([a-zA-Z0-9_]+)\s*\((.*?)\)/, 'const $1 = ($2) =>');
 		}
 
-		return "I'm sorry, I don't know how to perform that refactoring yet. Try 'add comments' or 'convert to arrow function'.";
+		// Return original code if instruction is not understood
+		return code;
+	}
+
+	// --- Targeted Code Insertion ---
+	if (message.startsWith('insertCode:')) {
+		const description = message.substring(11).toLowerCase();
+		if (description.includes('hello world')) {
+			return `function helloWorld() {\n  console.log("Hello, World!");\n}`;
+		}
+		if (description.includes('try catch')) {
+			return `try {\n\t// your code here\n} catch (error) {\n\tconsole.error(error);\n}`;
+		}
+		return `// Sorry, I can't generate that code for insertion yet.`;
 	}
 
 	// --- Code Explanation ---
