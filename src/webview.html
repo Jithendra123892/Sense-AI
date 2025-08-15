@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Sense AI Chat</title>
+	<style>
+		body { font-family: sans-serif; margin: 0; padding: 20px; background-color: #f0f0f0; color: #333; }
+		.chat-container { display: flex; flex-direction: column; height: calc(100vh - 40px); }
+		.messages { flex-grow: 1; overflow-y: auto; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background-color: #fff; margin-bottom: 10px; }
+		.message { margin-bottom: 8px; }
+		.user-message { text-align: right; color: #007acc; }
+		.ai-message { text-align: left; color: #28a745; }
+		.input-area { display: flex; }
+		.input-area input { flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 5px; margin-right: 10px; }
+		.input-area button { padding: 8px 15px; background-color: #007acc; color: white; border: none; border-radius: 5px; cursor: pointer; }
+	</style>
+</head>
+<body>
+	<div class="chat-container">
+		<div class="messages" id="messages"></div>
+		<div class="input-area">
+			<input type="text" id="chatInput" placeholder="Ask Sense AI...">
+			<button id="sendButton">Send</button>
+		</div>
+	</div>
+	<script>
+		const vscode = acquireVsCodeApi();
+		const messagesDiv = document.getElementById('messages');
+		const chatInput = document.getElementById('chatInput');
+		const sendButton = document.getElementById('sendButton');
+
+		sendButton.addEventListener('click', sendMessage);
+		chatInput.addEventListener('keypress', function (e) {
+			if (e.key === 'Enter') {
+				sendMessage();
+			}
+		});
+
+		function sendMessage() {
+			const text = chatInput.value;
+			if (text.trim() === '') return;
+
+			appendMessage('user', text);
+			chatInput.value = '';
+
+			vscode.postMessage({
+				command: 'alert',
+				text: `User message: ${text}`
+			});
+
+			// Simulate AI response
+			setTimeout(() => {
+				appendMessage('ai', `AI received: ${text}`);
+			}, 1000);
+		}
+
+		function appendMessage(sender, text) {
+			const messageElement = document.createElement('div');
+			messageElement.classList.add('message');
+			messageElement.classList.add(sender === 'user' ? 'user-message' : 'ai-message');
+			messageElement.textContent = text;
+			messagesDiv.appendChild(messageElement);
+			messagesDiv.scrollTop = messagesDiv.scrollHeight;
+		}
+	</script>
+</body>
+</html>
