@@ -8,10 +8,22 @@ export type Intent =
 	| { type: 'explain'; code: string }
 	| { type: 'generate'; description: string }
 	| { type: 'editFile'; instruction: string; fileContent: string }
+	| { type: 'createFile'; filename: string }
+	| { type: 'deleteFile'; filename: string }
 	| { type: 'chat'; message: string };
 
 export function getIntention(message: string, context: AIContext): Intent {
 	const lowerCaseMessage = message.toLowerCase();
+
+	// File Operations
+	const createFileMatch = lowerCaseMessage.match(/(?:create|make|add) (?:a )?(?:new )?file (?:called|named)?\s*['"`]?([a-zA-Z0-9_.-]+)['"`]?/);
+	if (createFileMatch) {
+		return { type: 'createFile', filename: createFileMatch[1] };
+	}
+	const deleteFileMatch = lowerCaseMessage.match(/(?:delete|remove) (?:the )?file (?:called|named)?\s*['"`]?([a-zA-Z0-9_.-]+)['"`]?/);
+	if (deleteFileMatch) {
+		return { type: 'deleteFile', filename: deleteFileMatch[1] };
+	}
 
 	// Check for intents that require selected text
 	if (context.selectedText) {
