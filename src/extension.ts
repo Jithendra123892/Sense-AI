@@ -49,24 +49,50 @@ export function activate(context: vscode.ExtensionContext) {
 			panel.webview.html = getWebviewContent();
 
 			panel.webview.onDidReceiveMessage(
-				message => {
-					// Simulate thinking delay
-					setTimeout(() => {
-						switch (message.command) {
-							case 'userMessage':
-								const editor = vscode.window.activeTextEditor;
-								const editorContent = editor ? editor.document.getText() : '';
-								const userMessage = message.text;
-								const aiResponse = getAIResponse(userMessage, editorContent);
-								panel?.webview.postMessage({ command: 'aiResponse', text: aiResponse });
-								return;
-							case 'explainCode':
-								const codeToExplain = message.text;
-								const explanation = getAIResponse(`explain: ${codeToExplain}`);
-								panel?.webview.postMessage({ command: 'aiResponse', text: explanation });
-								return;
-						}
-					}, 300 + Math.random() * 400);
+				async message => {
+					if (message.command === 'userMessage') {
+						// Simulate thinking delay
+						setTimeout(async () => {
+							const editor = vscode.window.activeTextEditor;
+							const selectedText = editor ? editor.document.getText(editor.selection) : undefined;
+							const fileContent = editor ? editor.document.getText() : undefined;
+
+							const intent = getIntention(message.text, { selectedText, fileContent });
+
+							let response;
+							switch (intent.type) {
+								case 'explain':
+									response = getAIResponse(`explain: ${intent.code}`);
+									panel?.webview.postMessage({ command: 'aiResponse', text: response });
+									break;
+								case 'refactor':
+									response = getAIResponse(`refactor: ${intent.instruction}\n---\n${intent.code}`);
+									panel?.webview.postMessage({ command: 'aiResponse', text: response });
+									break;
+								case 'editFile':
+									const newFileContent = getAIResponse(`editFile: ${intent.instruction}\n---\n${intent.fileContent}`);
+									if (editor) {
+										const edit = new vscode.WorkspaceEdit();
+										const fullRange = new vscode.Range(editor.document.positionAt(0), editor.document.positionAt(intent.fileContent.length));
+										edit.replace(editor.document.uri, fullRange, newFileContent);
+										await vscode.workspace.applyEdit(edit);
+										vscode.window.showInformationMessage('File edited by Sense AI.');
+									}
+									break;
+								case 'generate':
+									response = getAIResponse(`generate: ${intent.description}`);
+									panel?.webview.postMessage({ command: 'aiResponse', text: response });
+									break;
+								case 'chat':
+								default:
+									if (intent.type === 'chat') {
+										response = getAIResponse(intent.message, fileContent);
+										panel?.webview.postMessage({ command: 'aiResponse', text: response });
+									}
+									break;
+							}
+						}, 300 + Math.random() * 400);
+					}
 				},
 				undefined,
 				context.subscriptions
@@ -78,22 +104,6 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	context.subscriptions.push(openChatDisposable);
-
-	const explainCodeDisposable = vscode.commands.registerCommand('sense.explainCode', () => {
-		const editor = vscode.window.activeTextEditor;
-		if (editor) {
-			const selection = editor.selection;
-			const selectedText = editor.document.getText(selection);
-			if (selectedText) {
-				vscode.commands.executeCommand('sense.openChat').then(() => {
-					panel?.webview.postMessage({ command: 'explainCode', text: selectedText });
-				});
-			} else {
-				vscode.window.showInformationMessage('Please select some code to explain.');
-			}
-		}
-	});
-	context.subscriptions.push(explainCodeDisposable);
 
 	const generateCodeDisposable = vscode.commands.registerCommand('sense.generateCode', async () => {
 		const description = await vscode.window.showInputBox({
@@ -109,65 +119,9 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	context.subscriptions.push(generateCodeDisposable);
-
-	const refactorCodeDisposable = vscode.commands.registerCommand('sense.refactorCode', async () => {
-		const editor = vscode.window.activeTextEditor;
-		if (editor) {
-			const selection = editor.selection;
-			const selectedText = editor.document.getText(selection);
-			if (selectedText) {
-				const instruction = await vscode.window.showInputBox({
-					prompt: 'How should I refactor this code?',
-					placeHolder: 'e.g., add comments, convert to arrow function'
-				});
-
-				if (instruction) {
-					await vscode.commands.executeCommand('sense.openChat');
-					const fullRequest = `Refactor this code: \n\`\`\`\n${selectedText}\n\`\`\`\nWith the following instruction: "${instruction}"`;
-					panel?.webview.postMessage({ command: 'showUserMessage', text: fullRequest });
-
-					const refactoredCode = getAIResponse(`refactor: ${instruction}\n---\n${selectedText}`);
-					panel?.webview.postMessage({ command: 'aiResponse', text: refactoredCode });
-				}
-			} else {
-				vscode.window.showInformationMessage('Please select some code to refactor.');
-			}
-		}
-	});
-	context.subscriptions.push(refactorCodeDisposable);
-
-	const editCodeDisposable = vscode.commands.registerCommand('sense.editCode', async () => {
-		const editor = vscode.window.activeTextEditor;
-		if (editor) {
-			const instruction = await vscode.window.showInputBox({
-				prompt: 'How should I edit this file?',
-				placeHolder: 'e.g., add JSDoc comments to all functions'
-			});
-
-			if (instruction) {
-				const document = editor.document;
-				const fileContent = document.getText();
-
-				const newFileContent = getAIResponse(`editFile: ${instruction}\n---\n${fileContent}`);
-
-				const edit = new vscode.WorkspaceEdit();
-				const fullRange = new vscode.Range(
-					document.positionAt(0),
-					document.positionAt(fileContent.length)
-				);
-				edit.replace(document.uri, fullRange, newFileContent);
-
-				await vscode.workspace.applyEdit(edit);
-				vscode.window.showInformationMessage('File edited by Sense AI.');
-			}
-		} else {
-			vscode.window.showInformationMessage('Please open a file to edit.');
-		}
-	});
-	context.subscriptions.push(editCodeDisposable);
 }
 
-import { getAIResponse } from './ai';
+import { getAIResponse, getIntention, AIContext } from './ai';
 
 function getWebviewContent() {
 	const htmlPath = path.join(__dirname, '..', 'src', 'webview.html');
