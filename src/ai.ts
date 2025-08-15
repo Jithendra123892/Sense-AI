@@ -1,5 +1,36 @@
-export function getAIResponse(message: string): string {
+export function getAIResponse(message: string, context: string = ''): string {
 	const lowerCaseMessage = message.toLowerCase();
+
+	// --- Context-Aware Logic ---
+	if (lowerCaseMessage.includes('explain this') || lowerCaseMessage.includes('what does this do')) {
+		const functionRegex = /function\s+([a-zA-Z0-9_]+)\s*\(/g;
+		const functions = [...context.matchAll(functionRegex)].map(match => match[1]);
+
+		if (functions.length > 0) {
+			return `I see a few functions in this file: ${functions.join(', ')}. Which one are you asking about?`;
+		} else {
+			return "I'm not sure what you're referring to. Can you be more specific or select the code you want me to explain?";
+		}
+	}
+
+	// --- Refactoring ---
+	if (message.startsWith('refactor:')) {
+		const parts = message.substring(9).split('\n---\n');
+		const instruction = parts[0].toLowerCase();
+		const code = parts[1];
+
+		if (instruction.includes('add comment')) {
+			const commentedCode = `// This is a simulated refactoring. Here are some comments:\n${code.split('\n').map(line => `// ${line}`).join('\n')}`;
+			return `Sure, here is the code with added comments:\n\n\`\`\`\n${commentedCode}\n\`\`\``;
+		}
+
+		if (instruction.includes('arrow function')) {
+			const arrowFunc = code.replace(/function\s*([a-zA-Z0-9_]+)\s*\((.*?)\)/, 'const $1 = ($2) =>');
+			return `Here is the function converted to an arrow function:\n\n\`\`\`\n${arrowFunc}\n\`\`\``;
+		}
+
+		return "I'm sorry, I don't know how to perform that refactoring yet. Try 'add comments' or 'convert to arrow function'.";
+	}
 
 	// --- Code Explanation ---
 	if (message.startsWith('explain:')) {

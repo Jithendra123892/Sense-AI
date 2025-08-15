@@ -54,8 +54,10 @@ export function activate(context: vscode.ExtensionContext) {
 					setTimeout(() => {
 						switch (message.command) {
 							case 'userMessage':
+								const editor = vscode.window.activeTextEditor;
+								const editorContent = editor ? editor.document.getText() : '';
 								const userMessage = message.text;
-								const aiResponse = getAIResponse(userMessage);
+								const aiResponse = getAIResponse(userMessage, editorContent);
 								panel?.webview.postMessage({ command: 'aiResponse', text: aiResponse });
 								return;
 							case 'explainCode':
@@ -107,6 +109,32 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	context.subscriptions.push(generateCodeDisposable);
+
+	const refactorCodeDisposable = vscode.commands.registerCommand('sense.refactorCode', async () => {
+		const editor = vscode.window.activeTextEditor;
+		if (editor) {
+			const selection = editor.selection;
+			const selectedText = editor.document.getText(selection);
+			if (selectedText) {
+				const instruction = await vscode.window.showInputBox({
+					prompt: 'How should I refactor this code?',
+					placeHolder: 'e.g., add comments, convert to arrow function'
+				});
+
+				if (instruction) {
+					await vscode.commands.executeCommand('sense.openChat');
+					const fullRequest = `Refactor this code: \n\`\`\`\n${selectedText}\n\`\`\`\nWith the following instruction: "${instruction}"`;
+					panel?.webview.postMessage({ command: 'showUserMessage', text: fullRequest });
+
+					const refactoredCode = getAIResponse(`refactor: ${instruction}\n---\n${selectedText}`);
+					panel?.webview.postMessage({ command: 'aiResponse', text: refactoredCode });
+				}
+			} else {
+				vscode.window.showInformationMessage('Please select some code to refactor.');
+			}
+		}
+	});
+	context.subscriptions.push(refactorCodeDisposable);
 }
 
 import { getAIResponse } from './ai';
