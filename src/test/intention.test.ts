@@ -64,4 +64,22 @@ suite('Intention Recognition Test Suite', () => {
 		intent = getIntention('remove file "old_styles.css"', context);
 		assert.deepStrictEqual(intent, { type: 'deleteFile', filename: 'old_styles.css' });
 	});
+
+	test('should identify a git status intent', () => {
+		const context: AIContext = {};
+		const intent = getIntention('what is the git status?', context);
+		assert.deepStrictEqual(intent, { type: 'gitStatus' });
+	});
+
+	test('should identify a git commit intent and parse the message', () => {
+		const context: AIContext = {};
+		const intent = getIntention('commit with message "feat: add new feature"', context);
+		assert.deepStrictEqual(intent, { type: 'gitCommit', message: 'feat: add new feature' });
+	});
+
+	test('should identify a git push intent', () => {
+		const context: AIContext = {};
+		const intent = getIntention('push my changes', context);
+		assert.deepStrictEqual(intent, { type: 'gitPush' });
+	});
 });

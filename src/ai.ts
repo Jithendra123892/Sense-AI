@@ -10,10 +10,25 @@ export type Intent =
 	| { type: 'editFile'; instruction: string; fileContent: string }
 	| { type: 'createFile'; filename: string }
 	| { type: 'deleteFile'; filename: string }
+	| { type: 'gitStatus' }
+	| { type: 'gitCommit'; message: string }
+	| { type: 'gitPush' }
 	| { type: 'chat'; message: string };
 
 export function getIntention(message: string, context: AIContext): Intent {
 	const lowerCaseMessage = message.toLowerCase();
+
+	// Git Operations
+	if (lowerCaseMessage.includes('status')) { // More flexible
+		return { type: 'gitStatus' };
+	}
+	const commitMatch = lowerCaseMessage.match(/(?:git )?commit(?: my changes)?(?: with message)?\s*['"`](.*?)['"`]/);
+	if (commitMatch) {
+		return { type: 'gitCommit', message: commitMatch[1] };
+	}
+	if (lowerCaseMessage.includes('push')) { // More flexible
+		return { type: 'gitPush' };
+	}
 
 	// File Operations
 	const createFileMatch = lowerCaseMessage.match(/(?:create|make|add) (?:a )?(?:new )?file (?:called|named)?\s*['"`]?([a-zA-Z0-9_.-]+)['"`]?/);

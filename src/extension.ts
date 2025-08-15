@@ -123,6 +123,59 @@ export function activate(context: vscode.ExtensionContext) {
 										panel?.webview.postMessage({ command: 'aiResponse', text: "I can't delete a file because you don't have a workspace folder open." });
 									}
 									break;
+								case 'gitStatus':
+									try {
+										const git = simpleGit(vscode.workspace.workspaceFolders?.[0].uri.fsPath);
+										const status = await git.status();
+										const statusReport = `
+*Branch:* ${status.current}
+*Changes:*
+  *Modified:* ${status.modified.join(', ') || 'none'}
+  *New:* ${status.not_added.join(', ') || 'none'}
+  *Deleted:* ${status.deleted.join(', ') || 'none'}
+										`;
+										panel?.webview.postMessage({ command: 'aiResponse', text: `Here is the current Git status:\n\n\`\`\`\n${statusReport}\n\`\`\`` });
+									} catch (error) {
+										panel?.webview.postMessage({ command: 'aiResponse', text: `Error getting Git status: ${error}` });
+									}
+									break;
+								case 'gitCommit':
+									const commitConfirm = await vscode.window.showWarningMessage(
+										`Are you sure you want to add all files and commit with message: "${intent.message}"?`,
+										{ modal: true },
+										'Yes'
+									);
+									if (commitConfirm === 'Yes') {
+										try {
+											const git = simpleGit(vscode.workspace.workspaceFolders?.[0].uri.fsPath);
+											await git.add('./*');
+											await git.commit(intent.message);
+											panel?.webview.postMessage({ command: 'aiResponse', text: 'Successfully committed changes.' });
+										} catch (error) {
+											panel?.webview.postMessage({ command: 'aiResponse', text: `Error committing changes: ${error}` });
+										}
+									} else {
+										panel?.webview.postMessage({ command: 'aiResponse', text: 'Commit cancelled.' });
+									}
+									break;
+								case 'gitPush':
+									const pushConfirm = await vscode.window.showWarningMessage(
+										`Are you sure you want to push your changes to the remote repository?`,
+										{ modal: true },
+										'Yes'
+									);
+									if (pushConfirm === 'Yes') {
+										try {
+											const git = simpleGit(vscode.workspace.workspaceFolders?.[0].uri.fsPath);
+											await git.push();
+											panel?.webview.postMessage({ command: 'aiResponse', text: 'Successfully pushed changes.' });
+										} catch (error) {
+											panel?.webview.postMessage({ command: 'aiResponse', text: `Error pushing changes: ${error}` });
+										}
+									} else {
+										panel?.webview.postMessage({ command: 'aiResponse', text: 'Push cancelled.' });
+									}
+									break;
 								case 'generate':
 									response = getAIResponse(`generate: ${intent.description}`);
 									panel?.webview.postMessage({ command: 'aiResponse', text: response });
@@ -166,6 +219,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 import { getAIResponse, getIntention, AIContext } from './ai';
+import simpleGit from 'simple-git';
 
 function getWebviewContent() {
 	const htmlPath = path.join(__dirname, '..', 'src', 'webview.html');
