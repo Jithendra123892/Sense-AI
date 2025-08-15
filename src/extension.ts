@@ -66,8 +66,26 @@ export function activate(context: vscode.ExtensionContext) {
 									panel?.webview.postMessage({ command: 'aiResponse', text: response });
 									break;
 								case 'refactor':
-									response = getAIResponse(`refactor: ${intent.instruction}\n---\n${intent.code}`);
-									panel?.webview.postMessage({ command: 'aiResponse', text: response });
+									if (editor && selectedText) {
+										const refactoredCode = getAIResponse(`refactor: ${intent.instruction}\n---\n${intent.code}`);
+										const edit = new vscode.WorkspaceEdit();
+										edit.replace(editor.document.uri, editor.selection, refactoredCode);
+										await vscode.workspace.applyEdit(edit);
+										panel?.webview.postMessage({ command: 'aiResponse', text: "I've applied the refactoring to your selection." });
+									} else {
+										panel?.webview.postMessage({ command: 'aiResponse', text: "Please select code to refactor." });
+									}
+									break;
+								case 'insertCode':
+									if (editor) {
+										const codeToInsert = getAIResponse(`insertCode: ${intent.description}`);
+										const edit = new vscode.WorkspaceEdit();
+										edit.insert(editor.document.uri, editor.selection.active, codeToInsert);
+										await vscode.workspace.applyEdit(edit);
+										panel?.webview.postMessage({ command: 'aiResponse', text: "I've inserted the code at your cursor." });
+									} else {
+										panel?.webview.postMessage({ command: 'aiResponse', text: "Please open a file to insert code." });
+									}
 									break;
 								case 'editFile':
 									const newFileContent = getAIResponse(`editFile: ${intent.instruction}\n---\n${intent.fileContent}`);

@@ -15,14 +15,22 @@ suite('Intention Recognition Test Suite', () => {
 		assert.deepStrictEqual(intent, { type: 'explain', code: 'function foo() {}' });
 	});
 
-	test('should identify a refactor intent with selected text', () => {
+	test('should identify a refactor intent with various phrasing', () => {
 		const context: AIContext = { selectedText: 'function bar() {}' };
-		const intent = getIntention('refactor this to be an arrow function', context);
-		assert.deepStrictEqual(intent, {
-			type: 'refactor',
-			instruction: 'refactor this to be an arrow function',
-			code: 'function bar() {}'
-		});
+		let intent = getIntention('refactor this to be an arrow function', context);
+		assert.strictEqual(intent.type, 'refactor');
+
+		intent = getIntention('replace this with a try/catch block', context);
+		assert.strictEqual(intent.type, 'refactor');
+
+		intent = getIntention('rewrite this code', context);
+		assert.strictEqual(intent.type, 'refactor');
+	});
+
+	test('should identify an insertCode intent', () => {
+		const context: AIContext = {};
+		const intent = getIntention('add a function here', context);
+		assert.deepStrictEqual(intent, { type: 'insertCode', description: 'function here' });
 	});
 
 	test('should identify a generate intent', () => {

@@ -14,10 +14,15 @@ suite('AI Response Generation Test Suite', () => {
 		assert.ok(response.includes('const x = 1;'));
 	});
 
-	test('should generate a response for a refactor request', () => {
+	test('should return raw code for a refactor request', () => {
 		const response = getAIResponse('refactor: add comments\n---\nconsole.log("hi")');
-		assert.ok(response.includes('code with added comments'));
-		assert.ok(response.includes('// console.log("hi")'));
+		assert.strictEqual(response, '// This is a simulated refactoring. Here are some comments:\n// console.log("hi")');
+	});
+
+	test('should generate a response for an insertCode request', () => {
+		const response = getAIResponse('insertCode: a try catch block');
+		assert.ok(response.includes('try {'));
+		assert.ok(!response.includes('Sure, here is the code')); // Should not include conversational text
 	});
 
 	test('should generate a response for a generate request', () => {
