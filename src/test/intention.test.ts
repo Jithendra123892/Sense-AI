@@ -90,4 +90,13 @@ suite('Intention Recognition Test Suite', () => {
 		const intent = getIntention('push my changes', context);
 		assert.deepStrictEqual(intent, { type: 'gitPush' });
 	});
+
+	test('should identify a run in terminal intent', () => {
+		const context: AIContext = {};
+		let intent = getIntention('run `npm install` in the terminal', context);
+		assert.deepStrictEqual(intent, { type: 'runInTerminal', command: 'npm install' });
+
+		intent = getIntention('execute the tests', context);
+		assert.deepStrictEqual(intent, { type: 'runInTerminal', command: 'the tests' });
+	});
 });

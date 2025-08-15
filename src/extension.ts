@@ -7,6 +7,7 @@ import * as fs from 'fs';
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 let panel: vscode.WebviewPanel | undefined = undefined;
+let terminal: vscode.Terminal | undefined = undefined;
 
 export function activate(context: vscode.ExtensionContext) {
 
@@ -192,6 +193,24 @@ export function activate(context: vscode.ExtensionContext) {
 										}
 									} else {
 										panel?.webview.postMessage({ command: 'aiResponse', text: 'Push cancelled.' });
+									}
+									break;
+								case 'runInTerminal':
+									const termConfirm = await vscode.window.showWarningMessage(
+										`Are you sure you want to run the following command in the terminal?\n\n` +
+										`\`${intent.command}\``,
+										{ modal: true },
+										'Yes, run it'
+									);
+									if (termConfirm === 'Yes, run it') {
+										if (!terminal || terminal.exitStatus) {
+											terminal = vscode.window.createTerminal('Sense AI');
+										}
+										terminal.show();
+										terminal.sendText(intent.command);
+										panel?.webview.postMessage({ command: 'aiResponse', text: `I've sent the command \`${intent.command}\` to the terminal.` });
+									} else {
+										panel?.webview.postMessage({ command: 'aiResponse', text: 'Command execution cancelled.' });
 									}
 									break;
 								case 'generate':

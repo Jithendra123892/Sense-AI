@@ -14,10 +14,21 @@ export type Intent =
 	| { type: 'gitStatus' }
 	| { type: 'gitCommit'; message: string }
 	| { type: 'gitPush' }
+	| { type: 'runInTerminal'; command: string }
 	| { type: 'chat'; message: string };
 
 export function getIntention(message: string, context: AIContext): Intent {
 	const lowerCaseMessage = message.toLowerCase();
+
+	// Terminal Commands
+	const runInTerminalMatch = lowerCaseMessage.match(/(?:run|execute|perform)(?: in terminal)?\s*`([^`]+)`/);
+	if (runInTerminalMatch) {
+		return { type: 'runInTerminal', command: runInTerminalMatch[1] };
+	}
+	const runInTerminalMatch2 = lowerCaseMessage.match(/^(?:run|execute|perform)\s+(.*)/);
+    if (runInTerminalMatch2 && !runInTerminalMatch2[1].startsWith('git')) { // Avoid clashing with git commands
+        return { type: 'runInTerminal', command: runInTerminalMatch2[1] };
+    }
 
 	// Git Operations
 	if (lowerCaseMessage.includes('status')) { // More flexible
