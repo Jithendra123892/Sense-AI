@@ -135,6 +135,36 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	context.subscriptions.push(refactorCodeDisposable);
+
+	const editCodeDisposable = vscode.commands.registerCommand('sense.editCode', async () => {
+		const editor = vscode.window.activeTextEditor;
+		if (editor) {
+			const instruction = await vscode.window.showInputBox({
+				prompt: 'How should I edit this file?',
+				placeHolder: 'e.g., add JSDoc comments to all functions'
+			});
+
+			if (instruction) {
+				const document = editor.document;
+				const fileContent = document.getText();
+
+				const newFileContent = getAIResponse(`editFile: ${instruction}\n---\n${fileContent}`);
+
+				const edit = new vscode.WorkspaceEdit();
+				const fullRange = new vscode.Range(
+					document.positionAt(0),
+					document.positionAt(fileContent.length)
+				);
+				edit.replace(document.uri, fullRange, newFileContent);
+
+				await vscode.workspace.applyEdit(edit);
+				vscode.window.showInformationMessage('File edited by Sense AI.');
+			}
+		} else {
+			vscode.window.showInformationMessage('Please open a file to edit.');
+		}
+	});
+	context.subscriptions.push(editCodeDisposable);
 }
 
 import { getAIResponse } from './ai';

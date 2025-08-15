@@ -1,6 +1,27 @@
 export function getAIResponse(message: string, context: string = ''): string {
 	const lowerCaseMessage = message.toLowerCase();
 
+	// --- File Editing ---
+	if (message.startsWith('editFile:')) {
+		const parts = message.substring(9).split('\n---\n');
+		const instruction = parts[0].toLowerCase();
+		const fileContent = parts[1];
+
+		if (instruction.includes('add jsdoc')) {
+			// This is a very basic simulation of adding JSDoc comments.
+			const functionRegex = /(function\s+([a-zA-Z0-9_]+)\s*\((.*?)\))/g;
+			return fileContent.replace(functionRegex, (match, p1, p2, p3) => {
+				const params = p3.split(',').map((p: string) => p.trim()).filter(Boolean);
+				const paramsDoc = params.map((p: string) => ` * @param {*} ${p}`).join('\n');
+				const jsDoc = `/**\n * @description This is a sample JSDoc comment.\n${paramsDoc}\n * @returns {*} \n */`;
+				return `${jsDoc}\n${p1}`;
+			});
+		}
+
+		// Return original content if instruction is not understood
+		return fileContent;
+	}
+
 	// --- Context-Aware Logic ---
 	if (lowerCaseMessage.includes('explain this') || lowerCaseMessage.includes('what does this do')) {
 		const functionRegex = /function\s+([a-zA-Z0-9_]+)\s*\(/g;
@@ -65,7 +86,7 @@ export function getAIResponse(message: string, context: string = ''): string {
 	}
 
 	const helpMessages = [
-		'Of course! I can explain programming concepts, generate code snippets, and more. Try asking "what is a promise?" or "generate a fetch example".',
+		'Of course! I can help you with programming concepts, generate code snippets, and more. Try asking "what is a promise?" or "generate a fetch example".',
 		'I can help with that! Ask me to explain concepts like "async/await" or "arrays". You can also ask me to generate code.'
 	];
 	if (lowerCaseMessage.includes('help')) {

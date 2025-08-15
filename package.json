@@ -32,6 +32,10 @@
       {
         "command": "sense.refactorCode",
         "title": "Sense: Refactor Code"
+      },
+      {
+        "command": "sense.editCode",
+        "title": "Sense: Edit Code"
       }
     ],
     "menus": {

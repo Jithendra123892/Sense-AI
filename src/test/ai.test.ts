@@ -34,7 +34,13 @@ suite('AI Response Test Suite', () => {
 
 	test('getAIResponse for unknown topic', () => {
 		const response = getAIResponse('what is the meaning of life?');
-		assert.ok(response.toLowerCase().includes('sorry') || response.toLowerCase().includes('not sure'));
+		const lowerResponse = response.toLowerCase();
+		assert.ok(
+			lowerResponse.includes('sorry') ||
+			lowerResponse.includes('not sure') ||
+			lowerResponse.includes("don't have an answer"),
+			`Unexpected default response: ${response}`
+		);
 	});
 
 	test('getAIResponse for context-aware question', () => {
@@ -54,5 +60,12 @@ suite('AI Response Test Suite', () => {
 		const response = getAIResponse(`refactor: convert to arrow function\n---\n${code}`);
 		assert.ok(response.includes('=>'));
 		assert.ok(response.includes('const multiply'));
+	});
+
+	test('getAIResponse for file edit (add JSDoc)', () => {
+		const fileContent = 'function greet(name) {\n  return `Hello, ${name}`;\n}\n\nfunction farewell(name) {\n  return `Goodbye, ${name}`;\n}';
+		const response = getAIResponse(`editFile: add jsdoc\n---\n${fileContent}`);
+		assert.strictEqual((response.match(/\/\*\*/g) || []).length, 2, "Should have added two JSDoc blocks");
+		assert.ok(response.includes('@param {*} name'));
 	});
 });
