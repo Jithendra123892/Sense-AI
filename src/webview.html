@@ -5,20 +5,113 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Sense AI Chat</title>
 	<style>
-		body { font-family: sans-serif; margin: 0; padding: 20px; background-color: #f0f0f0; color: #333; }
-		.chat-container { display: flex; flex-direction: column; height: calc(100vh - 40px); }
-		.messages { flex-grow: 1; overflow-y: auto; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background-color: #fff; margin-bottom: 10px; }
-		.message { margin-bottom: 8px; }
-		.user-message { text-align: right; color: #007acc; }
-		.ai-message { text-align: left; color: #28a745; }
-		.input-area { display: flex; }
-		.input-area input { flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 5px; margin-right: 10px; }
-		.input-area button { padding: 8px 15px; background-color: #007acc; color: white; border: none; border-radius: 5px; cursor: pointer; }
+		body {
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			margin: 0;
+			padding: 0;
+			background-color: #1e1e1e;
+			color: #d4d4d4;
+			overflow: hidden;
+		}
+		.chat-container {
+			display: flex;
+			flex-direction: column;
+			height: 100vh;
+			padding: 20px;
+			box-sizing: border-box;
+		}
+		.messages {
+			flex-grow: 1;
+			overflow-y: auto;
+			padding: 10px;
+			margin-bottom: 20px;
+			display: flex;
+			flex-direction: column;
+		}
+		.message {
+			padding: 10px 15px;
+			border-radius: 18px;
+			margin-bottom: 10px;
+			max-width: 70%;
+			line-height: 1.4;
+		}
+		.user-message {
+			background-color: #007acc;
+			color: white;
+			align-self: flex-end;
+			margin-left: auto;
+		}
+		.ai-message {
+			background-color: #3e3e3e;
+			color: #d4d4d4;
+			align-self: flex-start;
+		}
+		.input-area {
+			display: flex;
+			padding: 10px;
+			background-color: #1e1e1e;
+		}
+		.input-area input {
+			flex-grow: 1;
+			padding: 10px;
+			border: 1px solid #3e3e3e;
+			border-radius: 20px;
+			background-color: #252526;
+			color: #d4d4d4;
+			margin-right: 10px;
+			outline: none;
+		}
+		.input-area input:focus {
+			border-color: #007acc;
+		}
+		.input-area button {
+			padding: 10px 20px;
+			background-color: #007acc;
+			color: white;
+			border: none;
+			border-radius: 20px;
+			cursor: pointer;
+			transition: background-color 0.3s;
+		}
+		.input-area button:hover {
+			background-color: #005a9e;
+		}
+		.typing-indicator {
+			display: none;
+			align-items: center;
+			padding: 10px 15px;
+		}
+		.typing-indicator span {
+			height: 8px;
+			width: 8px;
+			background-color: #999;
+			border-radius: 50%;
+			display: inline-block;
+			margin: 0 2px;
+			animation: bounce 1.4s infinite ease-in-out both;
+		}
+		.typing-indicator span:nth-child(2) {
+			animation-delay: -0.32s;
+		}
+		.typing-indicator span:nth-child(3) {
+			animation-delay: -0.16s;
+		}
+		@keyframes bounce {
+			0%, 80%, 100% { transform: scale(0); }
+			40% { transform: scale(1.0); }
+		}
 	</style>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.0/anime.min.js"></script>
 </head>
 <body>
 	<div class="chat-container">
-		<div class="messages" id="messages"></div>
+		<div class="messages" id="messages">
+			<div class="typing-indicator" id="typingIndicator">
+				<span></span>
+				<span></span>
+				<span></span>
+			</div>
+		</div>
 		<div class="input-area">
 			<input type="text" id="chatInput" placeholder="Ask Sense AI...">
 			<button id="sendButton">Send</button>
@@ -29,11 +122,36 @@
 		const messagesDiv = document.getElementById('messages');
 		const chatInput = document.getElementById('chatInput');
 		const sendButton = document.getElementById('sendButton');
+		const typingIndicator = document.getElementById('typingIndicator');
 
 		sendButton.addEventListener('click', sendMessage);
 		chatInput.addEventListener('keypress', function (e) {
 			if (e.key === 'Enter') {
 				sendMessage();
+			}
+		});
+
+		window.addEventListener('message', event => {
+			const message = event.data; // The JSON data our extension sent
+			switch (message.command) {
+				case 'aiResponse':
+					typingIndicator.style.display = 'none';
+					setTimeout(() => {
+						appendMessage('ai', message.text);
+					}, 300);
+					break;
+				case 'explainCode':
+					const code = message.text;
+					appendMessage('user', `Explain this code:\n\n\`\`\`\n${code}\n\`\`\``);
+					typingIndicator.style.display = 'flex';
+					messagesDiv.scrollTop = messagesDiv.scrollHeight;
+					vscode.postMessage({ command: 'explainCode', text: code });
+					break;
+				case 'showUserMessage':
+					appendMessage('user', message.text);
+					typingIndicator.style.display = 'flex';
+					messagesDiv.scrollTop = messagesDiv.scrollHeight;
+					break;
 			}
 		});
 
@@ -44,24 +162,36 @@
 			appendMessage('user', text);
 			chatInput.value = '';
 
-			vscode.postMessage({
-				command: 'alert',
-				text: `User message: ${text}`
-			});
+			typingIndicator.style.display = 'flex';
+			messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-			// Simulate AI response
-			setTimeout(() => {
-				appendMessage('ai', `AI received: ${text}`);
-			}, 1000);
+			vscode.postMessage({
+				command: 'userMessage',
+				text: text
+			});
 		}
 
 		function appendMessage(sender, text) {
 			const messageElement = document.createElement('div');
 			messageElement.classList.add('message');
 			messageElement.classList.add(sender === 'user' ? 'user-message' : 'ai-message');
-			messageElement.textContent = text;
-			messagesDiv.appendChild(messageElement);
+
+			// Basic markdown to HTML conversion for code blocks
+			const htmlText = text.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+			messageElement.innerHTML = htmlText;
+
+			messageElement.style.opacity = 0;
+
+			messagesDiv.insertBefore(messageElement, typingIndicator);
 			messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+			anime({
+				targets: messageElement,
+				opacity: 1,
+				translateY: [20, 0],
+				duration: 400,
+				easing: 'easeOutQuad'
+			});
 		}
 	</script>
 </body>
