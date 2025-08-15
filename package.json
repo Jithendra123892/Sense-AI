@@ -28,6 +28,10 @@
       {
         "command": "sense.generateCode",
         "title": "Sense: Generate Code"
+      },
+      {
+        "command": "sense.refactorCode",
+        "title": "Sense: Refactor Code"
       }
     ],
     "menus": {
@@ -35,6 +39,11 @@
         {
           "when": "editorHasSelection",
           "command": "sense.explainCode",
+          "group": "navigation"
+        },
+        {
+          "when": "editorHasSelection",
+          "command": "sense.refactorCode",
           "group": "navigation"
         }
       ]

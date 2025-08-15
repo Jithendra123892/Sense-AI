@@ -10,7 +10,10 @@ suite('AI Response Test Suite', () => {
 
 	test('getAIResponse for help', () => {
 		const response = getAIResponse('help');
-		assert.ok(response.toLowerCase().includes('help'));
+		if (!response.toLowerCase().includes('help')) {
+			console.log(`Unexpected response for 'help': ${response}`);
+		}
+		assert.ok(response.toLowerCase().includes('help'), `Response was: ${response}`);
 	});
 
 	test('getAIResponse for function', () => {
@@ -32,5 +35,24 @@ suite('AI Response Test Suite', () => {
 	test('getAIResponse for unknown topic', () => {
 		const response = getAIResponse('what is the meaning of life?');
 		assert.ok(response.toLowerCase().includes('sorry') || response.toLowerCase().includes('not sure'));
+	});
+
+	test('getAIResponse for context-aware question', () => {
+		const context = 'function myFunction() { console.log("hello"); }';
+		const response = getAIResponse('explain this', context);
+		assert.ok(response.includes('myFunction'));
+	});
+
+	test('getAIResponse for refactor (add comments)', () => {
+		const code = 'function add(a, b) {\n  return a + b;\n}';
+		const response = getAIResponse(`refactor: add comments\n---\n${code}`);
+		assert.ok(response.includes('//'));
+	});
+
+	test('getAIResponse for refactor (arrow function)', () => {
+		const code = 'function multiply(a, b) {\n  return a * b;\n}';
+		const response = getAIResponse(`refactor: convert to arrow function\n---\n${code}`);
+		assert.ok(response.includes('=>'));
+		assert.ok(response.includes('const multiply'));
 	});
 });
