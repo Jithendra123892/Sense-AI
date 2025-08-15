@@ -46,4 +46,22 @@ suite('Intention Recognition Test Suite', () => {
 		const intent = getIntention('explain this code', context);
 		assert.deepStrictEqual(intent, { type: 'chat', message: 'explain this code' });
 	});
+
+	test('should identify a create file intent with various phrasing', () => {
+		const context: AIContext = {};
+		let intent = getIntention('create a new file called test.js', context);
+		assert.deepStrictEqual(intent, { type: 'createFile', filename: 'test.js' });
+
+		intent = getIntention('make file "index.html"', context);
+		assert.deepStrictEqual(intent, { type: 'createFile', filename: 'index.html' });
+	});
+
+	test('should identify a delete file intent with various phrasing', () => {
+		const context: AIContext = {};
+		let intent = getIntention('delete the file temp.txt', context);
+		assert.deepStrictEqual(intent, { type: 'deleteFile', filename: 'temp.txt' });
+
+		intent = getIntention('remove file "old_styles.css"', context);
+		assert.deepStrictEqual(intent, { type: 'deleteFile', filename: 'old_styles.css' });
+	});
 });

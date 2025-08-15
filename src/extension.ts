@@ -79,6 +79,50 @@ export function activate(context: vscode.ExtensionContext) {
 										vscode.window.showInformationMessage('File edited by Sense AI.');
 									}
 									break;
+								case 'createFile':
+									const workspaceFolders = vscode.workspace.workspaceFolders;
+									if (workspaceFolders) {
+										const rootUri = workspaceFolders[0].uri;
+										const fileUri = vscode.Uri.joinPath(rootUri, intent.filename);
+										try {
+											// Check if file exists
+											await vscode.workspace.fs.stat(fileUri);
+											panel?.webview.postMessage({ command: 'aiResponse', text: `File '${intent.filename}' already exists.` });
+										} catch {
+											// File does not exist, create it
+											await vscode.workspace.fs.writeFile(fileUri, new Uint8Array());
+											panel?.webview.postMessage({ command: 'aiResponse', text: `Successfully created file '${intent.filename}'.` });
+										}
+									} else {
+										panel?.webview.postMessage({ command: 'aiResponse', text: "I can't create a file because you don't have a workspace folder open." });
+									}
+									break;
+								case 'deleteFile':
+									const workspaceFoldersForDelete = vscode.workspace.workspaceFolders;
+									if (workspaceFoldersForDelete) {
+										const rootUri = workspaceFoldersForDelete[0].uri;
+										const fileUriToDelete = vscode.Uri.joinPath(rootUri, intent.filename);
+
+										const confirmation = await vscode.window.showWarningMessage(
+											`Are you sure you want to delete the file '${intent.filename}'? This action cannot be undone.`,
+											{ modal: true },
+											'Yes, delete it'
+										);
+
+										if (confirmation === 'Yes, delete it') {
+											try {
+												await vscode.workspace.fs.delete(fileUriToDelete, { useTrash: true });
+												panel?.webview.postMessage({ command: 'aiResponse', text: `Successfully deleted file '${intent.filename}'.` });
+											} catch (error) {
+												panel?.webview.postMessage({ command: 'aiResponse', text: `Error deleting file: ${error}` });
+											}
+										} else {
+											panel?.webview.postMessage({ command: 'aiResponse', text: 'File deletion cancelled.' });
+										}
+									} else {
+										panel?.webview.postMessage({ command: 'aiResponse', text: "I can't delete a file because you don't have a workspace folder open." });
+									}
+									break;
 								case 'generate':
 									response = getAIResponse(`generate: ${intent.description}`);
 									panel?.webview.postMessage({ command: 'aiResponse', text: response });
