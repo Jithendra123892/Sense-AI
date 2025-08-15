@@ -20,8 +20,25 @@
       {
         "command": "sense.openChat",
         "title": "Open Sense AI Chat"
+      },
+      {
+        "command": "sense.explainCode",
+        "title": "Sense: Explain Code"
+      },
+      {
+        "command": "sense.generateCode",
+        "title": "Sense: Generate Code"
       }
-    ]
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "editorHasSelection",
+          "command": "sense.explainCode",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
