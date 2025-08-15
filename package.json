@@ -22,36 +22,10 @@
         "title": "Open Sense AI Chat"
       },
       {
-        "command": "sense.explainCode",
-        "title": "Sense: Explain Code"
-      },
-      {
         "command": "sense.generateCode",
         "title": "Sense: Generate Code"
-      },
-      {
-        "command": "sense.refactorCode",
-        "title": "Sense: Refactor Code"
-      },
-      {
-        "command": "sense.editCode",
-        "title": "Sense: Edit Code"
       }
-    ],
-    "menus": {
-      "editor/context": [
-        {
-          "when": "editorHasSelection",
-          "command": "sense.explainCode",
-          "group": "navigation"
-        },
-        {
-          "when": "editorHasSelection",
-          "command": "sense.refactorCode",
-          "group": "navigation"
-        }
-      ]
-    }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

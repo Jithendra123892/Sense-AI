@@ -1,3 +1,42 @@
+export interface AIContext {
+	selectedText?: string;
+	fileContent?: string;
+}
+
+export type Intent =
+	| { type: 'refactor'; instruction: string; code: string }
+	| { type: 'explain'; code: string }
+	| { type: 'generate'; description: string }
+	| { type: 'editFile'; instruction: string; fileContent: string }
+	| { type: 'chat'; message: string };
+
+export function getIntention(message: string, context: AIContext): Intent {
+	const lowerCaseMessage = message.toLowerCase();
+
+	// Check for intents that require selected text
+	if (context.selectedText) {
+		if (lowerCaseMessage.startsWith('refactor') || lowerCaseMessage.startsWith('edit') || lowerCaseMessage.startsWith('change')) {
+			return { type: 'refactor', instruction: message, code: context.selectedText };
+		}
+		if (lowerCaseMessage.startsWith('explain')) {
+			return { type: 'explain', code: context.selectedText };
+		}
+	}
+
+	// Check for file-level editing
+	if (lowerCaseMessage.includes('this file')) {
+		return { type: 'editFile', instruction: message, fileContent: context.fileContent || '' };
+	}
+
+	// Check for generation
+	if (lowerCaseMessage.startsWith('generate') || lowerCaseMessage.startsWith('create')) {
+		return { type: 'generate', description: message };
+	}
+
+	// Default to chat
+	return { type: 'chat', message: message };
+}
+
 export function getAIResponse(message: string, context: string = ''): string {
 	const lowerCaseMessage = message.toLowerCase();
 
