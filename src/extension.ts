@@ -2,12 +2,10 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { getAIResponse, getIntention, AIContext, ConversationMessage } from './ai';
-import simpleGit from 'simple-git';
 
 let panel: vscode.WebviewPanel | undefined = undefined;
-let terminal: vscode.Terminal | undefined = undefined;
 let conversationHistory: ConversationMessage[] = [];
-const MAX_HISTORY_LENGTH = 20; // Increased history length
+const MAX_HISTORY_LENGTH = 20;
 
 export function activate(context: vscode.ExtensionContext) {
 	console.log('Congratulations, your extension "sense" is now active!');
@@ -124,67 +122,6 @@ export function activate(context: vscode.ExtensionContext) {
 										postAIResponse("I can't delete a file because you don't have a workspace folder open.");
 									}
 									break;
-								case 'gitStatus':
-									try {
-										const git = simpleGit(vscode.workspace.workspaceFolders?.[0].uri.fsPath);
-										const status = await git.status();
-										const statusReport = `*Branch:* ${status.current}\n*Changes:*\n  *Modified:* ${status.modified.join(', ') || 'none'}\n  *New:* ${status.not_added.join(', ') || 'none'}\n  *Deleted:* ${status.deleted.join(', ') || 'none'}`;
-										postAIResponse(`Here is the current Git status:\n\n\`\`\`\n${statusReport}\n\`\`\``);
-									} catch (error: any) {
-										postAIResponse(`Error getting Git status: ${error.message}`);
-									}
-									break;
-								case 'gitCommit':
-									const commitConfirm = await vscode.window.showWarningMessage(
-										`Are you sure you want to add all files and commit with message: "${intent.message}"?`,
-										{ modal: true }, 'Yes'
-									);
-									if (commitConfirm === 'Yes') {
-										try {
-											const git = simpleGit(vscode.workspace.workspaceFolders?.[0].uri.fsPath);
-											await git.add('./*');
-											await git.commit(intent.message);
-											postAIResponse('Successfully committed changes.');
-										} catch (error: any) {
-											postAIResponse(`Error committing changes: ${error.message}`);
-										}
-									} else {
-										postAIResponse('Commit cancelled.');
-									}
-									break;
-								case 'gitPush':
-									const pushConfirm = await vscode.window.showWarningMessage(
-										`Are you sure you want to push your changes to the remote repository?`,
-										{ modal: true }, 'Yes'
-									);
-									if (pushConfirm === 'Yes') {
-										try {
-											const git = simpleGit(vscode.workspace.workspaceFolders?.[0].uri.fsPath);
-											await git.push();
-											postAIResponse('Successfully pushed changes.');
-										} catch (error: any) {
-											postAIResponse(`Error pushing changes: ${error.message}`);
-										}
-									} else {
-										postAIResponse('Push cancelled.');
-									}
-									break;
-								case 'runInTerminal':
-									const termConfirm = await vscode.window.showWarningMessage(
-										`Are you sure you want to run the following command in the terminal?\n\n` + `\`${intent.command}\``,
-										{ modal: true }, 'Yes, run it'
-									);
-									if (termConfirm === 'Yes, run it') {
-										if (!terminal || terminal.exitStatus) {
-											terminal = vscode.window.createTerminal('Sense AI');
-										}
-										terminal.show();
-										terminal.sendText(intent.command);
-										postAIResponse(`I've sent the command \`${intent.command}\` to the terminal.`);
-									} else {
-										postAIResponse('Command execution cancelled.');
-									}
-									break;
 								case 'generate':
 									response = getAIResponse(`generate: ${intent.description}`);
 									postAIResponse(response);
@@ -206,33 +143,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 			panel.onDidDispose(() => {
 				panel = undefined;
-				terminal = undefined; // Also clear terminal reference
 				conversationHistory = []; // Clear history
 			}, null, context.subscriptions);
 		}
 	});
 	context.subscriptions.push(openChatDisposable);
-
-	const inlineSuggestionDisposable = vscode.languages.registerInlineCompletionItemProvider(
-		{ pattern: '**' }, // Activate for all files
-		inlineSuggestionProvider
-	);
-	context.subscriptions.push(inlineSuggestionDisposable);
 }
-
-const inlineSuggestionProvider = {
-	provideInlineCompletionItems(document: vscode.TextDocument, position: vscode.Position, context: vscode.InlineCompletionContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.InlineCompletionItem[] | vscode.InlineCompletionList> {
-		const line = document.lineAt(position.line);
-		const textBeforeCursor = line.text.substring(0, position.character);
-
-		if (textBeforeCursor.trim().toLowerCase() === 'function') {
-			const snippet = new vscode.SnippetString(' ${1:functionName}(${2:args}) {\n\t${0}\n}');
-			return [new vscode.InlineCompletionItem(snippet)];
-		}
-
-		return [];
-	}
-};
 
 function getWebviewContent() {
 	const htmlPath = path.join(__dirname, '..', 'src', 'webview.html');
