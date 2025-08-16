@@ -40,7 +40,19 @@ export function activate(context: vscode.ExtensionContext) {
 							}
 						};
 
-						setTimeout(async () => {
+						vscode.window.withProgress({
+							location: vscode.ProgressLocation.Notification,
+							title: "Sense AI is thinking...",
+							cancellable: true
+						}, async (progress, token) => {
+							// The 'thinking' delay is now handled by the progress notification
+							await new Promise(resolve => setTimeout(resolve, 1000));
+
+							if (token.isCancellationRequested) {
+								postAIResponse({ speech: "I've cancelled the request." });
+								return;
+							}
+
 							const editor = vscode.window.activeTextEditor;
 							const selection = editor?.selection;
 							const selectedText = selection && !selection.isEmpty ? editor?.document.getText(selection) : undefined;
@@ -138,7 +150,7 @@ export function activate(context: vscode.ExtensionContext) {
 									}
 									break;
 							}
-						}, 300 + Math.random() * 400);
+						});
 					}
 				},
 				undefined,

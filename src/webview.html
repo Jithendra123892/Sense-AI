@@ -42,6 +42,22 @@
             background-color: #161616;
             padding: 10px;
             border-radius: 8px;
+            position: relative;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: #555;
+            color: white;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .copy-btn:hover {
+            background-color: #777;
         }
 		.user-message {
 			background-color: #007acc;
@@ -84,6 +100,19 @@
 		.input-area button:hover {
 			background-color: #005a9e;
 		}
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .message-animated {
+            animation: fadeIn 0.3s ease-out;
+        }
 	</style>
 </head>
 <body>
@@ -126,14 +155,34 @@
 
 		function appendMessage(sender, text) {
 			const messageElement = document.createElement('div');
-			messageElement.classList.add('message');
+			messageElement.classList.add('message', 'message-animated'); // Add animation class
 			messageElement.classList.add(sender === 'user' ? 'user-message' : 'ai-message');
 
-            // Basic markdown to HTML conversion for code blocks
 			const htmlText = text.replace(/```(?:\w*\n)?([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
 			messageElement.innerHTML = htmlText;
 
 			messagesDiv.appendChild(messageElement);
+
+            // Add copy buttons to code blocks
+            const codeBlocks = messageElement.querySelectorAll('pre');
+            codeBlocks.forEach(block => {
+                const code = block.querySelector('code');
+                if (!code) return;
+
+                const btn = document.createElement('button');
+                btn.classList.add('copy-btn');
+                btn.textContent = 'Copy';
+                btn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(code.textContent || '').then(() => {
+                        btn.textContent = 'Copied!';
+                        setTimeout(() => {
+                            btn.textContent = 'Copy';
+                        }, 2000);
+                    });
+                });
+                block.appendChild(btn);
+            });
+
 			messagesDiv.scrollTop = messagesDiv.scrollHeight;
 		}
 	</script>
