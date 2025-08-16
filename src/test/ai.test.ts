@@ -1,65 +1,45 @@
 import * as assert from 'assert';
 import { suite, test } from 'mocha';
-import { getIntention, getAIResponse, AIContext } from '../ai';
+import { getAIResponse, AIResponse } from '../ai';
 
-suite('AI Logic Test Suite (Rolled Back)', () => {
-
-    // --- getIntention Tests ---
-
-    test('should identify a chat intent', () => {
-        const context: AIContext = {};
-        const intent = getIntention('hello there', context);
-        assert.deepStrictEqual(intent, { type: 'chat', message: 'hello there' });
-    });
-
-    test('should identify an explain intent with selected text', () => {
-        const context: AIContext = { selectedText: 'function foo() {}' };
-        const intent = getIntention('explain this', context);
-        assert.deepStrictEqual(intent, { type: 'explain', code: 'function foo() {}' });
-    });
-
-    test('should identify a refactor intent with selected text', () => {
-        const context: AIContext = { selectedText: 'function bar() {}' };
-        const intent = getIntention('refactor this', context);
-        assert.deepStrictEqual(intent, { type: 'refactor', instruction: 'refactor this', code: 'function bar() {}' });
-    });
-
-    test('should identify an insertCode intent', () => {
-		const context: AIContext = {};
-		const intent = getIntention('add a function here', context);
-		assert.deepStrictEqual(intent, { type: 'insertCode', description: 'function here' });
+suite('AI Response Generation Test Suite', () => {
+	test('should generate a response for a chat message', () => {
+		const response: AIResponse = getAIResponse('a nonsensical message');
+		const lowerSpeech = response.speech.toLowerCase();
+		assert.ok(
+			lowerSpeech.includes('sorry') ||
+			lowerSpeech.includes('not sure') ||
+			lowerSpeech.includes("don't have an answer") ||
+            lowerSpeech.includes("outside of what i can do")
+		);
 	});
 
-    test('should identify a createFile intent', () => {
-		const context: AIContext = {};
-		const intent = getIntention('create a new file called test.js', context);
-		assert.deepStrictEqual(intent, { type: 'createFile', filename: 'test.js' });
+	test('should generate a response for an explain request', () => {
+		const response: AIResponse = getAIResponse('explain: const x = 1;');
+		assert.ok(response.speech.includes('breakdown'));
+        assert.strictEqual(response.code, 'const x = 1;');
 	});
 
-    // --- getAIResponse Tests ---
-
-    test('should get a response for a chat message', () => {
-        const response = getAIResponse('a nonsensical message');
-        assert.ok(response.includes("I'm sorry, I'm not sure how to answer that."));
-    });
-
-    test('should get a response for an explain request', () => {
-		const response = getAIResponse('explain: const x = 1;');
-		assert.ok(response.includes('This is a simulated explanation.'));
+	test('should return raw code for a refactor request', () => {
+		const response: AIResponse = getAIResponse('refactor: add comments\n---\nconsole.log("hi")');
+		assert.strictEqual(response.speech, '// This is a simulated refactoring. Here are some comments:\n// console.log("hi")');
+        assert.strictEqual(response.code, undefined);
 	});
 
-    test('should get a response for a refactor request', () => {
-        const response = getAIResponse('refactor: add comments\n---\nconsole.log("hi")');
-		assert.strictEqual(response, '// This is a simulated refactoring. Here are some comments:\n// console.log("hi")');
-    });
+	test('should generate a response for an insertCode request', () => {
+		const response: AIResponse = getAIResponse('insertCode: a try catch block');
+		assert.strictEqual(response.speech, 'try {\n\t// your code here\n} catch (error) {\n\tconsole.error(error);\n}');
+        assert.strictEqual(response.code, undefined);
+	});
 
-    test('should get a response for an insertCode request', () => {
-        const response = getAIResponse('insertCode: a try catch block');
-		assert.strictEqual(response, 'try {\n\t// your code here\n} catch (error) {\n\tconsole.error(error);\n}');
-    });
+	test('should generate a response for a generate request', () => {
+		const response: AIResponse = getAIResponse('generate: a hello world function');
+		assert.ok(response.speech.includes('here is a classic'));
+        assert.ok(response.code?.includes('function helloWorld()'));
+	});
 
-    test('should get a response for a file edit request', () => {
-		const response = getAIResponse('editFile: add jsdoc\n---\nfunction main() {}');
-		assert.ok(response.includes('/**'));
+	test('should generate a response for a file edit request', () => {
+		const response: AIResponse = getAIResponse('editFile: add jsdoc\n---\nfunction main() {}');
+		assert.ok(response.speech.includes('/**'));
 	});
 });

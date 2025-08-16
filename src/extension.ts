@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { getAIResponse, getIntention, AIContext, ConversationMessage } from './ai';
+import { getAIResponse, getIntention, AIContext, ConversationMessage, AIResponse } from './ai';
 
 let panel: vscode.WebviewPanel | undefined = undefined;
 let conversationHistory: ConversationMessage[] = [];
@@ -28,9 +28,13 @@ export function activate(context: vscode.ExtensionContext) {
 						const userMessage = message.text;
 						conversationHistory.push({ sender: 'user', content: userMessage });
 
-						const postAIResponse = (text: string) => {
-							panel?.webview.postMessage({ command: 'aiResponse', text });
-							conversationHistory.push({ sender: 'ai', content: text });
+						const postAIResponse = (response: AIResponse) => {
+							const formattedResponse = response.code
+								? `${response.speech}\n\n\`\`\`\n${response.code}\n\`\`\``
+								: response.speech;
+
+							panel?.webview.postMessage({ command: 'aiResponse', text: formattedResponse });
+							conversationHistory.push({ sender: 'ai', content: formattedResponse });
 							if (conversationHistory.length > MAX_HISTORY_LENGTH) {
 								conversationHistory = conversationHistory.slice(-MAX_HISTORY_LENGTH);
 							}
@@ -44,7 +48,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 							const intent = getIntention(userMessage, { selectedText, fileContent, history: conversationHistory });
 
-							let response;
+							let response: AIResponse;
 							switch (intent.type) {
 								case 'explain':
 									response = getAIResponse(`explain: ${intent.code}`);
@@ -52,35 +56,35 @@ export function activate(context: vscode.ExtensionContext) {
 									break;
 								case 'refactor':
 									if (editor && selectedText) {
-										const refactoredCode = getAIResponse(`refactor: ${intent.instruction}\n---\n${intent.code}`);
+										const refactoredCode = getAIResponse(`refactor: ${intent.instruction}\n---\n${intent.code}`).speech;
 										const edit = new vscode.WorkspaceEdit();
 										edit.replace(editor.document.uri, editor.selection, refactoredCode);
 										await vscode.workspace.applyEdit(edit);
-										postAIResponse("I've applied the refactoring to your selection.");
+										postAIResponse({ speech: "I've applied the refactoring to your selection." });
 									} else {
-										postAIResponse("Please select code to refactor.");
+										postAIResponse({ speech: "Please select code to refactor." });
 									}
 									break;
 								case 'insertCode':
 									if (editor) {
-										const codeToInsert = getAIResponse(`insertCode: ${intent.description}`);
+										const codeToInsert = getAIResponse(`insertCode: ${intent.description}`).speech;
 										const edit = new vscode.WorkspaceEdit();
 										edit.insert(editor.document.uri, editor.selection.active, codeToInsert);
 										await vscode.workspace.applyEdit(edit);
-										postAIResponse("I've inserted the code at your cursor.");
+										postAIResponse({ speech: "I've inserted the code at your cursor." });
 									} else {
-										postAIResponse("Please open a file to insert code.");
+										postAIResponse({ speech: "Please open a file to insert code." });
 									}
 									break;
 								case 'editFile':
 									if (editor) {
-										const newFileContent = getAIResponse(`editFile: ${intent.instruction}\n---\n${intent.fileContent}`);
+										const newFileContent = getAIResponse(`editFile: ${intent.instruction}\n---\n${intent.fileContent}`).speech;
 										const edit = new vscode.WorkspaceEdit();
 										const fullRange = new vscode.Range(editor.document.positionAt(0), editor.document.positionAt(intent.fileContent.length));
 										edit.replace(editor.document.uri, fullRange, newFileContent);
 										await vscode.workspace.applyEdit(edit);
 										vscode.window.showInformationMessage('File edited by Sense AI.');
-										postAIResponse("I've edited the file as you requested.");
+										postAIResponse({ speech: "I've edited the file as you requested."});
 									}
 									break;
 								case 'createFile':
@@ -90,13 +94,13 @@ export function activate(context: vscode.ExtensionContext) {
 										const fileUri = vscode.Uri.joinPath(rootUri, intent.filename);
 										try {
 											await vscode.workspace.fs.stat(fileUri);
-											postAIResponse(`File '${intent.filename}' already exists.`);
+											postAIResponse({ speech: `File '${intent.filename}' already exists.` });
 										} catch {
 											await vscode.workspace.fs.writeFile(fileUri, new Uint8Array());
-											postAIResponse(`Successfully created file '${intent.filename}'.`);
+											postAIResponse({ speech: `Successfully created file '${intent.filename}'. Now what should we put in it?` });
 										}
 									} else {
-										postAIResponse("I can't create a file because you don't have a workspace folder open.");
+										postAIResponse({ speech: "I can't create a file because you don't have a workspace folder open." });
 									}
 									break;
 								case 'deleteFile':
@@ -111,15 +115,15 @@ export function activate(context: vscode.ExtensionContext) {
 										if (confirmation === 'Yes, delete it') {
 											try {
 												await vscode.workspace.fs.delete(fileUriToDelete, { useTrash: true });
-												postAIResponse(`Successfully deleted file '${intent.filename}'.`);
+												postAIResponse({ speech: `Successfully deleted file '${intent.filename}'.` });
 											} catch (error: any) {
-												postAIResponse(`Error deleting file: ${error.message}`);
+												postAIResponse({ speech: `Error deleting file: ${error.message}` });
 											}
 										} else {
-											postAIResponse('File deletion cancelled.');
+											postAIResponse({ speech: 'File deletion cancelled.' });
 										}
 									} else {
-										postAIResponse("I can't delete a file because you don't have a workspace folder open.");
+										postAIResponse({ speech: "I can't delete a file because you don't have a workspace folder open." });
 									}
 									break;
 								case 'generate':
