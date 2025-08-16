@@ -14,10 +14,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "sense.helloWorld",
-        "title": "Hello World"
-      },
-      {
         "command": "sense.openChat",
         "title": "Open Sense AI Chat"
       }

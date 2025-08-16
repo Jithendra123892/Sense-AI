@@ -32,9 +32,17 @@
 			padding: 10px 15px;
 			border-radius: 18px;
 			margin-bottom: 10px;
-			max-width: 70%;
-			line-height: 1.4;
+			max-width: 80%;
+			line-height: 1.5;
+            white-space: pre-wrap;
 		}
+        .message pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background-color: #161616;
+            padding: 10px;
+            border-radius: 8px;
+        }
 		.user-message {
 			background-color: #007acc;
 			color: white;
@@ -100,7 +108,7 @@
 		});
 
 		window.addEventListener('message', event => {
-			const message = event.data; // The JSON data our extension sent
+			const message = event.data;
 			switch (message.command) {
 				case 'aiResponse':
 					appendMessage('ai', message.text);
@@ -111,21 +119,20 @@
 		function sendMessage() {
 			const text = chatInput.value;
 			if (text.trim() === '') return;
-
 			appendMessage('user', text);
 			chatInput.value = '';
-
-			vscode.postMessage({
-				command: 'userMessage',
-				text: text
-			});
+			vscode.postMessage({ command: 'userMessage', text: text });
 		}
 
 		function appendMessage(sender, text) {
 			const messageElement = document.createElement('div');
 			messageElement.classList.add('message');
 			messageElement.classList.add(sender === 'user' ? 'user-message' : 'ai-message');
-			messageElement.textContent = text;
+
+            // Basic markdown to HTML conversion for code blocks
+			const htmlText = text.replace(/```(?:\w*\n)?([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+			messageElement.innerHTML = htmlText;
+
 			messagesDiv.appendChild(messageElement);
 			messagesDiv.scrollTop = messagesDiv.scrollHeight;
 		}
