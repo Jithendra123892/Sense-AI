@@ -212,7 +212,27 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	context.subscriptions.push(openChatDisposable);
+
+	const inlineSuggestionDisposable = vscode.languages.registerInlineCompletionItemProvider(
+		{ pattern: '**' }, // Activate for all files
+		inlineSuggestionProvider
+	);
+	context.subscriptions.push(inlineSuggestionDisposable);
 }
+
+const inlineSuggestionProvider = {
+	provideInlineCompletionItems(document: vscode.TextDocument, position: vscode.Position, context: vscode.InlineCompletionContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.InlineCompletionItem[] | vscode.InlineCompletionList> {
+		const line = document.lineAt(position.line);
+		const textBeforeCursor = line.text.substring(0, position.character);
+
+		if (textBeforeCursor.trim().toLowerCase() === 'function') {
+			const snippet = new vscode.SnippetString(' ${1:functionName}(${2:args}) {\n\t${0}\n}');
+			return [new vscode.InlineCompletionItem(snippet)];
+		}
+
+		return [];
+	}
+};
 
 function getWebviewContent() {
 	const htmlPath = path.join(__dirname, '..', 'src', 'webview.html');
