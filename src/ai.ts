@@ -26,6 +26,18 @@ export type Intent =
 export function getIntention(message: string, context: AIContext): Intent {
 	const lowerCaseMessage = message.toLowerCase();
 
+	// Handle Follow-up Intents
+	const lastMessage = context.history?.[context.history.length - 1];
+	if (lastMessage && lastMessage.sender === 'ai' && (lowerCaseMessage.includes(' it') || lowerCaseMessage.includes(' that') || lowerCaseMessage.includes(' this'))) {
+		const codeBlockRegex = /```(?:\w*\n)?([\s\S]*?)```/;
+		const codeMatch = lastMessage.content.match(codeBlockRegex);
+		if (codeMatch && codeMatch[1]) {
+			const code = codeMatch[1].trim();
+			// This is a refactor/edit intent related to the last code block
+			return { type: 'refactor', instruction: message, code: code };
+		}
+	}
+
     // Terminal Commands
 	const runInTerminalMatch = lowerCaseMessage.match(/(?:run|execute|perform)(?: in terminal)?\s*`([^`]+)`/);
 	if (runInTerminalMatch) {

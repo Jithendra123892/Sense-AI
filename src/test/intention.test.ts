@@ -78,4 +78,20 @@ suite('Intention Recognition Test Suite', () => {
 		const intent = getIntention('run `npm install`', context);
 		assert.deepStrictEqual(intent, { type: 'runInTerminal', command: 'npm install' });
 	});
+
+	test('should identify a follow-up intent from history', () => {
+		const codeBlock = 'function doSomething() {\n  // ...\n}';
+		const context: AIContext = {
+			history: [
+				{ sender: 'user', content: 'generate a function' },
+				{ sender: 'ai', content: `Here you go:\n\n\`\`\`\n${codeBlock}\n\`\`\`` }
+			]
+		};
+		const intent = getIntention('add comments to it', context);
+		assert.deepStrictEqual(intent, {
+			type: 'refactor',
+			instruction: 'add comments to it',
+			code: codeBlock
+		});
+	});
 });
